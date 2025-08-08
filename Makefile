@@ -4,13 +4,21 @@
 install:
 	pip install -r requirements.txt
 
-# Run the agent
+# Run the agent (OpenAI version)
 run: stop
 	python app.py dev
 
-# Run in development mode with auto-reload
+# Run in development mode with auto-reload (OpenAI version)
 dev: stop
 	python app.py dev --reload
+
+# Run Gemini Realtime agent
+gemini: stop
+	python gemini_realtime_agent.py dev
+
+# Run Gemini in development mode with auto-reload
+gemini-dev: stop
+	python gemini_realtime_agent.py dev --reload
 
 # Stop all agent processes
 stop:
