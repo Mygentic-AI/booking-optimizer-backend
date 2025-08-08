@@ -50,7 +50,7 @@ htmlcov/
 dmypy.json
 
 # Environment
-.env
+.env*
 .env.local
 .env.*.local
 
@@ -70,3 +70,4 @@ transcripts/
 
 # Medical extracts
 medical_extracts/.env*
+!.env.example

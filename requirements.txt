@@ -4,6 +4,10 @@ livekit-plugins-openai>=0.8.0
 livekit-plugins-deepgram>=0.6.0
 livekit-plugins-silero>=0.6.0
 
+# Google/Gemini support
+livekit-plugins-google>=1.2.0  # For Google Cloud STT/TTS and Gemini LLM
+# Note: For Gemini Live (realtime multimodal), use google.RealtimeSession
+
 # Python async support
 aiohttp>=3.9.0
 python-dotenv>=1.0.0
