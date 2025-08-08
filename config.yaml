@@ -1,0 +1,30 @@
+# Configuration for AI Medical Consultation Platform
+
+# Diagnosis throttling settings
+diagnosis_throttling:
+  # Never send updates more frequently than this (seconds)
+  minimum_interval_seconds: 15
+  
+  # Always send update after this time if narrative changed (seconds)
+  maximum_interval_seconds: 60
+  
+  # Send immediately if this many words added (after minimum interval)
+  word_count_threshold: 20
+  
+  # Send when these medical sections are completed
+  trigger_sections:
+    - "Physical examination:"
+    - "Chief complaint:"
+    - "Medical history:"
+    - "Current medications:"
+    - "Review of systems:"
+
+# Diagnosis API settings
+diagnosis_api:
+  url: "http://localhost:8000"
+  timeout_seconds: 30
+  
+# Medical listener settings
+medical_listener:
+  # Minimum narrative length before sending to diagnosis
+  minimum_narrative_length: 50
