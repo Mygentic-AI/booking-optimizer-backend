@@ -1,8 +1,10 @@
 import logging
 import asyncio
 import random
+import os
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
+from pathlib import Path
 from dotenv import load_dotenv
 
 from livekit.agents import (
@@ -34,44 +36,28 @@ class GeminiAppointmentAgent(Agent):
     """
     
     def __init__(self, appointment_details: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(
-            instructions="""You are Sarah, a friendly and professional appointment coordinator. 
+        # Load prompt from external markdown file
+        prompt_path = Path(__file__).parent / "prompts" / "appointment_coordinator.md"
+        
+        # Check if custom prompt exists, otherwise use default
+        if prompt_path.exists():
+            with open(prompt_path, 'r') as f:
+                instructions = f.read()
+            logger.info(f"Loaded prompt from {prompt_path}")
+        else:
+            # Fallback to basic prompt if file doesn't exist
+            instructions = """You are Sarah, a friendly and professional appointment coordinator. 
             Your job is to call patients to confirm appointments, manage walk-in lists, and optimize scheduling.
-            
-            IMPORTANT CONVERSATIONAL BEHAVIORS:
-            - Use natural filler phrases when thinking: "um", "let me see", "one moment"
-            - Include acknowledgment sounds when listening: "mm-hmm", "I see", "got it"
-            - Vary your responses to avoid sounding scripted
-            - Speak at a normal, conversational pace
-            - Be warm and empathetic while remaining efficient
-            
-            THREE CORE FUNCTIONS:
-            1. PROACTIVE CONFIRMATIONS (10 AM - 12 PM for next day):
-               - Call to confirm tomorrow's appointments
-               - Handle nuanced responses like "check back at 10:30 AM to confirm my 2 PM appointment"
-               - Note any special reminder preferences
-            
-            2. SMART WALK-IN MANAGEMENT:
-               - When someone can't get an appointment, capture their flexibility
-               - Track "I'm shopping nearby, 10 minutes notice" type availability
-               - Record "Give me an hour's notice, free at these times" preferences
-            
-            3. PERSONALIZED REMINDERS:
-               - Honor custom requests like "Call me 1 hour before"
-               - Respect "Don't call again, I'm definitely coming"
-               - Track individual preferences for future appointments
-            
-            CONVERSATION APPROACH:
-            - Start with a warm greeting and clearly identify yourself and your purpose
-            - Be flexible and capture complex availability patterns
-            - If they need to reschedule, offer alternatives immediately
-            - Always sound natural and human-like, never robotic
-            
-            Remember: You're helping optimize the clinic's schedule while providing excellent customer service.""",
+            Start by greeting the caller and confirming their appointment details."""
+            logger.warning(f"Prompt file not found at {prompt_path}, using default prompt")
+        
+        super().__init__(
+            instructions=instructions,
             # Use Gemini's Realtime Model for multimodal, low-latency interactions
             llm=google.beta.realtime.RealtimeModel(
-                # Optional: Configure model parameters
-                # model="gemini-2.0-flash-exp",  # or other available models
+                # Using native audio dialog model for better voice quality
+                model="gemini-2.5-flash-preview-native-audio-dialog",
+                voice="Kore",  # Female voice with Arabic accent capability
                 # temperature=0.8,  # Higher for more natural variation
             ),
             # Voice Activity Detection for better turn-taking
@@ -93,24 +79,8 @@ class GeminiAppointmentAgent(Agent):
         self.reminder_preferences = {}
         self.clarification_attempts = 0
 
-    async def on_enter(self):
-        """Called when agent first joins the call."""
-        # Small delay to simulate picking up the phone naturally
-        await asyncio.sleep(0.8)
-        
-        # Get time of day for natural greeting
-        hour = datetime.now().hour
-        time_of_day = "morning" if hour < 12 else "afternoon" if hour < 17 else "evening"
-        
-        # Generate contextual greeting with appointment details
-        greeting_context = f"""Good {time_of_day}! This is Sarah calling from {self.appointment_details['location']}. 
-        I'm calling to confirm your appointment with {self.appointment_details['doctor']} 
-        {self.appointment_details['date']} for your {self.appointment_details['service']}."""
-        
-        # Use Gemini's natural language generation
-        self.session.generate_reply(
-            instructions=f"Greet the patient warmly and confirm their appointment. Context: {greeting_context}"
-        )
+    # The Gemini Realtime model handles the greeting automatically based on the instructions
+    # No need for an explicit on_enter method as it doesn't support session.say()
 
     @function_tool
     async def confirm_appointment(
@@ -315,6 +285,12 @@ async def entrypoint(ctx: JobContext):
         room_output_options=RoomOutputOptions(
             transcription_enabled=True
         ),
+    )
+    
+    # Trigger the proactive greeting after session starts
+    logger.info("Triggering agent greeting...")
+    await session.generate_reply(
+        instructions="Immediately greet the caller by saying: 'Good afternoon. This is Sarah calling from Downtown Medical Center. I am calling to confirm your appointment with Doctor Ahmed tomorrow at two-thirty p.m. for your consultation. I am calling to confirm whether you are still able to make it.'"
     )
     
     # Log final status
