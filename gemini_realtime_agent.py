@@ -56,7 +56,8 @@ class GeminiAppointmentAgent(Agent):
             # Use Gemini's Realtime Model for multimodal, low-latency interactions
             llm=google.beta.realtime.RealtimeModel(
                 # Using native audio dialog model for better voice quality
-                model="gemini-2.5-flash-preview-native-audio-dialog",
+                # model="gemini-2.5-flash-preview-native-audio-dialog",
+                model="gemini-2.5-flash",
                 voice="Kore",  # Female voice with Arabic accent capability
                 # temperature=0.8,  # Higher for more natural variation
             ),
@@ -246,7 +247,7 @@ async def entrypoint(ctx: JobContext):
         "service": "consultation",
         "doctor": "Dr. Ahmed",
         "location": "Downtown Medical Center",
-        "patient_name": "there",
+        "patient_name": "Andre Pemmelaar",  # Will be injected from database later
     }
 
     # Create agent session - Gemini Realtime handles the voice pipeline internally
@@ -289,8 +290,11 @@ async def entrypoint(ctx: JobContext):
     
     # Trigger the proactive greeting after session starts
     logger.info("Triggering agent greeting...")
+    # Use the patient name from appointment details
+    patient_name = appointment_details.get("patient_name", "the patient")
+    
     await session.generate_reply(
-        instructions="Immediately greet the caller by saying: 'Good afternoon. This is Sarah calling from Downtown Medical Center. I am calling to confirm your appointment with Doctor Ahmed tomorrow at two-thirty p.m. for your consultation. I am calling to confirm whether you are still able to make it.'"
+        instructions=f"Greet the caller professionally, introduce yourself as Farah from Downtown Medical Center, and confirm you're speaking with {patient_name}."
     )
     
     # Log final status
