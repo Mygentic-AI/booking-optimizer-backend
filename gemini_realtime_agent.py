@@ -51,21 +51,7 @@ class GeminiAppointmentAgent(Agent):
             Start by greeting the caller and confirming their appointment details."""
             logger.warning(f"Prompt file not found at {prompt_path}, using default prompt")
         
-        super().__init__(
-            instructions=instructions,
-            # Use Gemini's Realtime Model for multimodal, low-latency interactions
-            llm=google.beta.realtime.RealtimeModel(
-                # Using native audio dialog model for better voice quality
-                # model="gemini-2.5-flash-preview-native-audio-dialog",
-                model="gemini-2.5-flash",
-                voice="Kore",  # Female voice with Arabic accent capability
-                # temperature=0.8,  # Higher for more natural variation
-            ),
-            # Voice Activity Detection for better turn-taking
-            vad=silero.VAD.load(),
-        )
-        
-        # Default appointment details for testing
+        # Inject the actual appointment details into the instructions
         self.appointment_details = appointment_details or {
             "date": "tomorrow at 2:30 PM",
             "service": "consultation",
@@ -73,6 +59,33 @@ class GeminiAppointmentAgent(Agent):
             "location": "Downtown Medical Center",
             "patient_name": "there",
         }
+        
+        # Add appointment details to the instructions
+        instructions += f"""
+        
+## Current Appointment Details:
+- Patient Name: {self.appointment_details['patient_name']}
+- Date and Time: {self.appointment_details['date']}
+- Service: {self.appointment_details['service']}
+- Doctor: {self.appointment_details['doctor']}
+- Location: {self.appointment_details['location']}
+
+You are calling to confirm THIS SPECIFIC appointment. Do not make up different dates or times."""
+        
+        super().__init__(
+            instructions=instructions,
+            # Use Gemini's Realtime Model for multimodal, low-latency interactions
+            llm=google.beta.realtime.RealtimeModel(
+                # Using native audio dialog model for better voice quality
+                # model="gemini-2.5-flash-preview-native-audio-dialog",
+                model="gemini-2.0-flash-live-001",  # Live API model for audio
+                voice="Kore",  # Female voice
+                language="ar-XA",  # Specify Arabic as the language
+                temperature=0.8,  # Higher for more natural variation
+            ),
+            # Voice Activity Detection for better turn-taking
+            vad=silero.VAD.load(),
+        )
         
         # Track conversation state
         self.confirmation_status = None
