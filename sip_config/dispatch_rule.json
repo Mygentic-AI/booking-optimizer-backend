@@ -1,0 +1,10 @@
+{
+  "rule": {
+    "name": "Route Telnyx Calls",
+    "trunk_ids": ["WILL_BE_REPLACED_WITH_ACTUAL_TRUNK_ID"],
+    "dispatchRuleDirect": {
+      "room_name": "appointment-confirmation",
+      "pin": ""
+    }
+  }
+}

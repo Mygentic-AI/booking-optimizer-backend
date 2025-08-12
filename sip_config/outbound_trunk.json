@@ -1,0 +1,11 @@
+{
+  "trunk": {
+    "name": "Telnyx Outbound Trunk",
+    "address": "sip.telnyx.com",
+    "numbers": [
+      "+17205738374"
+    ],
+    "auth_username": "andre_pemmelaar",
+    "auth_password": "d5vw3nQNWAjgD7X3kJ"
+  }
+}

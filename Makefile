@@ -20,11 +20,41 @@ gemini: stop
 gemini-dev: stop
 	python gemini_realtime_agent.py dev --reload
 
+# Run Enhanced Gemini SIP agent (supports both web and SIP)
+gemini-sip: stop
+	python enhanced_gemini_sip_agent.py dev
+
+# Run Enhanced Gemini SIP in development mode with auto-reload
+gemini-sip-dev: stop
+	python enhanced_gemini_sip_agent.py dev --reload
+
+# Setup SIP trunks with Telnyx
+setup-sip:
+	chmod +x setup_sip.sh
+	./setup_sip.sh
+
+# Make outbound appointment confirmation calls
+outbound-calls:
+	python outbound_caller.py
+
+# List SIP trunks
+list-sip-trunks:
+	@echo "Inbound Trunks:"
+	lk sip inbound list
+	@echo "\nOutbound Trunks:"
+	lk sip outbound list
+
+# List SIP dispatch rules
+list-sip-dispatch:
+	lk sip dispatch list
+
 # Stop all agent processes
 stop:
 	@echo "Stopping all agent processes..."
 	@pkill -f "python.*app.py" || true
 	@pkill -f "python.*basic_agent" || true
+	@pkill -f "python.*gemini.*agent" || true
+	@pkill -f "python.*enhanced.*sip.*agent" || true
 	@pkill -f "multiprocessing.*spawn" || true
 	@sleep 1
 	@echo "All agents stopped."
