@@ -99,6 +99,14 @@ The system uses an AI doctor agent to simulate real doctor-patient conversations
 - **Purpose**: Testers act as patients to generate realistic medical conversations
 - **Benefit**: No need for real doctors during development and testing
 
+### SIP Telephony Integration (NEW ✨)
+The system now supports traditional phone calls through SIP:
+- **Inbound Calls**: Receive calls on Telnyx number +18773893410
+- **Outbound Calls**: Make appointment confirmation calls
+- **Dual Mode**: Same agent handles both web and phone interactions
+- **Language Support**: English for phone, Arabic for web
+- See `docs/SIP_SETUP.md` for complete telephony setup
+
 ### Core Components
 
 #### 1. Voice Agent (app.py)
@@ -163,6 +171,12 @@ make format    # Format code with ruff
 make test      # Run tests with pytest
 make clean     # Clean cache files
 make stop      # Stop all running agents
+
+# SIP Telephony Commands
+make gemini-sip        # Start the enhanced SIP-enabled agent
+make outbound-calls    # Make outbound appointment calls
+make list-sip-trunks   # List configured SIP trunks
+make setup-sip         # Initial SIP configuration setup
 ```
 
 ### Debugging

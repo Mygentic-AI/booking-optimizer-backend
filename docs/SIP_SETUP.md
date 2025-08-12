@@ -104,6 +104,30 @@ lk sip inbound create --name "Telnyx Inbound" \
 
 **IMPORTANT**: The `:5060` port in the address is REQUIRED for proper SIP header construction!
 
+## Working Configuration Summary
+
+### Key Requirements for Successful SIP Integration
+
+1. **Telnyx Configuration**:
+   - FQDN: Your LiveKit project's SIP endpoint (e.g., `dev-scheduling-ai-fcg41leb.sip.livekit.cloud`)
+   - Username: No underscores allowed (e.g., `andrepemmelaar` not `andre_pemmelaar`)
+   - Transport: UDP on port 5060
+
+2. **LiveKit Trunk Configuration**:
+   - **CRITICAL**: Address must include port: `sip.telnyx.com:5060`
+   - Transport: UDP (not AUTO)
+   - Authentication: Username without underscores
+
+3. **Agent Dispatch for Outbound Calls**:
+   - Must use explicit dispatch via `agent_dispatch.create_dispatch()`
+   - Cannot rely on automatic dispatch for programmatically created rooms
+   - Agent with `agent_name` parameter requires explicit dispatch
+
+4. **Code Requirements**:
+   - Use `ParticipantKind.PARTICIPANT_KIND_SIP` (not `ParticipantKind.SIP`)
+   - Accept all rooms with custom `request_fnc` in WorkerOptions
+   - Handle job metadata for appointment details
+
 ## Usage
 
 ### Starting the Enhanced SIP Agent
@@ -204,20 +228,39 @@ lk sip outbound update sip_config/outbound_trunk.json
 
 ### Common Issues
 
-1. **"Assignment timeout" errors**
+1. **Agent not joining outbound calls**
+   - **Solution**: Use explicit agent dispatch when creating rooms
+   ```python
+   # Create room first
+   room = await livekit_api.room.create_room(room_request)
+   
+   # Then dispatch agent explicitly
+   dispatch = await livekit_api.agent_dispatch.create_dispatch(
+       api.CreateAgentDispatchRequest(
+           agent_name="gemini-sip-agent",
+           room=room_name,
+           metadata=json.dumps(metadata)
+       )
+   )
+   ```
+   - Agents with `agent_name` are not auto-dispatched to programmatically created rooms
+
+2. **"Assignment timeout" errors**
    - Ensure the agent is running: `make gemini-sip`
    - Check LiveKit credentials are correct
-   - Verify dispatch rules are configured
+   - Verify agent dispatch is configured correctly
 
-2. **Calls not connecting**
+3. **Calls not connecting**
    - Verify Telnyx FQDN matches your LiveKit project
-   - Check authentication credentials
+   - Check authentication credentials (no underscores in username!)
    - Ensure phone number is associated with SIP connection
+   - **CRITICAL**: Include port `:5060` in trunk address
 
-3. **No audio on calls**
+4. **No audio on calls**
+   - Ensure agent is properly dispatched to the room
    - Check firewall settings for SIP/RTP ports
-   - Verify transport protocol (TCP vs UDP)
-   - Test with a different phone number
+   - Verify transport protocol (UDP recommended)
+   - Confirm agent is using correct ParticipantKind enum: `PARTICIPANT_KIND_SIP`
 
 ### Debug Logging
 
