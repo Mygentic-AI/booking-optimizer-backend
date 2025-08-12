@@ -6,6 +6,7 @@ Outbound SIP Calling Script for Appointment Confirmations
 import asyncio
 import os
 import logging
+import json
 from datetime import datetime
 from typing import List, Dict, Any
 from dotenv import load_dotenv
@@ -54,6 +55,13 @@ class OutboundCallManager:
             
             logger.info(f"Initiating call to {phone_number} in room {room_name}")
             
+            # Prepare metadata for the agent
+            metadata = {
+                "type": "outbound_appointment_call",
+                "appointment": appointment_details,
+                "phone_number": phone_number
+            }
+            
             # Create the room first
             room_request = api.CreateRoomRequest(
                 name=room_name,
@@ -63,18 +71,14 @@ class OutboundCallManager:
             room = await self.livekit_api.room.create_room(room_request)
             logger.info(f"Created room: {room.name}")
             
-            # Store appointment details in room metadata for the agent to access
-            metadata = {
-                "type": "outbound_appointment_call",
-                "appointment": appointment_details,
-                "phone_number": phone_number
-            }
-            
-            update_request = api.UpdateRoomMetadataRequest(
+            # Explicitly dispatch the agent to the room
+            dispatch_request = api.CreateAgentDispatchRequest(
+                agent_name="gemini-sip-agent",  # Must match the agent_name in enhanced_gemini_sip_agent.py
                 room=room_name,
-                metadata=str(metadata)
+                metadata=json.dumps(metadata)
             )
-            await self.livekit_api.room.update_room_metadata(update_request)
+            dispatch = await self.livekit_api.agent_dispatch.create_dispatch(dispatch_request)
+            logger.info(f"Agent dispatched to room: {dispatch.id}")
             
             # Create SIP participant for outbound call
             sip_request = api.CreateSIPParticipantRequest(

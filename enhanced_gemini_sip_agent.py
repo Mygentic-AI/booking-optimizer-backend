@@ -1,6 +1,7 @@
 import logging
 import asyncio
 import os
+import json
 from datetime import datetime, timedelta
 from typing import Optional, Dict, Any, List
 from pathlib import Path
@@ -11,6 +12,7 @@ from livekit.agents import (
     AgentSession,
     JobContext,
     JobProcess,
+    JobRequest,
     RoomInputOptions,
     RoomOutputOptions,
     RunContext,
@@ -263,7 +265,7 @@ You are calling to confirm THIS SPECIFIC appointment. Do not make up different d
 
 def detect_sip_participant(participant: rtc.RemoteParticipant) -> tuple[bool, Dict[str, str]]:
     """Detect if participant is from SIP and extract attributes."""
-    is_sip = participant.kind == rtc.ParticipantKind.SIP
+    is_sip = participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
     sip_attrs = {}
     
     if is_sip:
@@ -322,9 +324,36 @@ async def entrypoint(ctx: JobContext):
         "room": ctx.room.name,
     }
     
+    # Check if we have job metadata from agent dispatch
+    job_metadata = None
+    if hasattr(ctx, 'job') and ctx.job and ctx.job.metadata:
+        try:
+            job_metadata = json.loads(ctx.job.metadata)
+            logger.info(f"Job metadata received from dispatch: {job_metadata}")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse job metadata: {e}")
+    
     # Connect to room with audio-only subscription for SIP compatibility
     await ctx.connect(auto_subscribe=AutoSubscribe.AUDIO_ONLY)
     logger.info(f"Connected to room: {ctx.room.name}")
+    
+    # Check if this is an outbound call room (created by outbound_caller.py)
+    is_outbound_call = ctx.room.name.startswith("outbound_")
+    room_metadata = None
+    
+    if is_outbound_call:
+        # For outbound calls, metadata may be in job metadata from dispatch
+        if job_metadata:
+            room_metadata = job_metadata
+            logger.info(f"Using job metadata for outbound call: {room_metadata}")
+        elif ctx.room.metadata:
+            # Fallback to room metadata if job metadata not available
+            try:
+                import ast
+                room_metadata = ast.literal_eval(ctx.room.metadata)
+                logger.info(f"Using room metadata for outbound call: {room_metadata}")
+            except:
+                logger.warning(f"Failed to parse room metadata: {ctx.room.metadata}")
     
     # Wait for a participant to join
     participant = await ctx.wait_for_participant()
@@ -336,9 +365,13 @@ async def entrypoint(ctx: JobContext):
     if is_sip:
         logger.info(f"SIP attributes: {sip_attrs}")
     
-    # Determine appointment details based on connection type
-    if is_sip and 'sip.phoneNumber' in sip_attrs:
-        # Look up appointment by phone number for SIP calls
+    # Determine appointment details based on connection type and room
+    if is_outbound_call and room_metadata and 'appointment' in room_metadata:
+        # Use appointment details from room metadata for outbound calls
+        appointment_details = room_metadata['appointment']
+        logger.info(f"Using appointment details from room metadata for outbound call")
+    elif is_sip and 'sip.phoneNumber' in sip_attrs:
+        # Look up appointment by phone number for inbound SIP calls
         appointment_details = get_appointment_by_phone(sip_attrs['sip.phoneNumber'])
         logger.info(f"Loaded appointment for phone: {sip_attrs['sip.phoneNumber']}")
     else:
@@ -453,10 +486,19 @@ async def entrypoint(ctx: JobContext):
         logger.info(f"Reminder preferences: {agent.reminder_preferences}")
 
 
+async def accept_all_rooms(request: JobRequest):
+    """Accept jobs for all rooms to handle dynamic outbound call rooms."""
+    logger.info(f"[REQUEST] Received job request for room: {request.room.name}")
+    # Always accept - needed for outbound_* rooms created by outbound_caller.py
+    await request.accept()
+    logger.info(f"[REQUEST] Accepted job for room: {request.room.name}")
+
+
 if __name__ == "__main__":
     cli.run_app(WorkerOptions(
         entrypoint_fnc=entrypoint,
         prewarm_fnc=prewarm,
+        request_fnc=accept_all_rooms,  # Accept all rooms including outbound_*
         # Set explicit agent name for dispatch targeting
         agent_name="gemini-sip-agent"
     ))
