@@ -33,17 +33,35 @@ The enhanced SIP agent extends your existing Gemini appointment agent to:
 
 In your Telnyx Mission Control Portal:
 
-1. Go to **SIP Connections**
-2. Create or edit your SIP connection with these settings:
-   - **Connection Type**: FQDN
-   - **FQDN**: `your-project-id.sip.livekit.cloud` (get from LiveKit dashboard)
-   - **Authentication**: Credentials
-   - **Username**: `andre_pemmelaar` (your username)
-   - **Password**: Your SIP password
-   - **Transport**: TCP (recommended)
-   - **Inbound Destination**: +E.164 format
+1. Go to **SIP Connections** → Create New Connection
+2. **Configuration Tab**:
+   - **Connection Name**: LiveKit
+   - **Connection Type**: FQDN Connection
+   - **Status**: Active
 
-3. Associate your phone number(s) with this SIP connection
+3. **Authentication and Routing Tab**:
+   - Add FQDN: `dev-scheduling-ai-fcg41leb.sip.livekit.cloud` (your LiveKit project's SIP endpoint)
+   - **Port**: 5060
+   - **DNS Record Type**: SRV
+   - **Primary FQDN**: Select the FQDN you just added
+   - **Outbound Calls Authentication**: 
+     - Method: Credentials
+     - Username: `andrepemmelaar` (no underscores allowed)
+     - Password: Your secure password
+
+4. **Inbound Tab**:
+   - **Destination Number Format**: +E.164
+   - **SIP Transport Protocol**: UDP
+   - **SIP Region**: Europe (or closest to your target)
+
+5. **Outbound Tab**:
+   - **Outbound Voice Profile**: Select Default or create one
+   - **Localization Country**: Your target country
+   - **Caller ID Override**: Your Telnyx number (e.g., +18773893410)
+   - **Important**: Do NOT put the destination number here
+
+6. **Numbers Tab**:
+   - Assign your purchased Telnyx number(s) to this SIP connection
 
 ### 2. Set Up Environment Variables
 
@@ -56,24 +74,35 @@ LIVEKIT_API_SECRET=your-api-secret
 OPENAI_API_KEY=your-openai-key
 ```
 
-The SIP credentials are already in `.env.sip`:
+Create `.env.sip` with your Telnyx credentials:
 ```bash
-TELNYX_SIP_USER=andre_pemmelaar
-TELNYX_SIP_PASSWORD=d5vw3nQNWAjgD7X3kJ
-TELNYX_PHONE_NUMBER=+17205738374
+TELNYX_SIP_USER=andrepemmelaar  # No underscores!
+TELNYX_SIP_PASSWORD=your_password
+TELNYX_PHONE_NUMBER=+18773893410  # Your Telnyx number
+TELNYX_SIP_SERVER=sip.telnyx.com
 ```
 
-### 3. Run Setup Script
+### 3. Create LiveKit SIP Trunks
 
 ```bash
-# Make the setup script executable and run it
-make setup-sip
+# Create outbound trunk (CRITICAL: include :5060 port!)
+lk sip outbound create --name "Telnyx Outbound" \
+  --address "sip.telnyx.com:5060" \
+  --transport "UDP" \
+  --numbers "+18773893410" \
+  --auth-user "andrepemmelaar" \
+  --auth-pass "your_password"
+
+# Save the returned trunk ID to .env.sip as OUTBOUND_TRUNK_ID
+
+# Create inbound trunk
+lk sip inbound create --name "Telnyx Inbound" \
+  --numbers "+18773893410"
+
+# Save the returned trunk ID to .env.sip as INBOUND_TRUNK_ID
 ```
 
-This will:
-- Create inbound and outbound SIP trunks in LiveKit
-- Configure dispatch rules for incoming calls
-- Save trunk IDs to `.env.sip`
+**IMPORTANT**: The `:5060` port in the address is REQUIRED for proper SIP header construction!
 
 ## Usage
 
